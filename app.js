@@ -1,7 +1,7 @@
 // ============================================================
 // BASE DE ARTÍCULOS
 // ============================================================
-const BASE_LIBRERIA = [
+const BASE_LIBRERIA_ORIGINAL = [
   "Abrochadora pinza p/broche (GRAP 21/6)",
   "Abrochadora p/broche 21/6",
   "Abrochadora p/broche 50",
@@ -163,7 +163,7 @@ const BASE_LIBRERIA = [
   "Voligoma x 30 ml."
 ];
 
-const BASE_LIMPIEZA = [
+const BASE_LIMPIEZA_ORIGINAL = [
   "Agua lavandina al 50% 1 litro",
   "Agua lavandina Ayudín x 2 litros",
   "Alcohol etílico desnaturalizado (de quemar) x litro",
@@ -271,21 +271,47 @@ const CANT_INICIAL_LIMPIEZA = {
 };
 
 // ============================================================
+// NUEVO: BASE DINÁMICA (incluye artículos originales + agregados por el usuario)
+// ============================================================
+let baseLibreria = [...BASE_LIBRERIA_ORIGINAL];
+let baseLimpieza = [...BASE_LIMPIEZA_ORIGINAL];
+let nuevosLibreria = [];   // artículos agregados por el usuario
+let nuevosLimpieza = [];   // artículos agregados por el usuario
+
+// ============================================================
 // ESTADO
 // ============================================================
 let estado = { fecha: '', sector: '', solicitante: '', items: [] };
 let sugerenciaActiva = { libreria: -1, limpieza: -1 };
+let categoriaNuevo = 'libreria';
 const nombresMeses = ['', 'Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
 // ============================================================
 // PERSISTENCIA
 // ============================================================
 function guardar() { localStorage.setItem('pedidos_estado', JSON.stringify(estado)); }
+function guardarBase() {
+  localStorage.setItem('pedidos_base_nuevos', JSON.stringify({
+    libreria: nuevosLibreria,
+    limpieza: nuevosLimpieza
+  }));
+}
 function cargar() {
   const raw = localStorage.getItem('pedidos_estado');
   if (raw) {
     try { estado = JSON.parse(raw); } catch(e) { console.warn('Error cargando estado', e); }
   }
+  // NUEVO: cargar artículos nuevos agregados por el usuario
+  const rawBase = localStorage.getItem('pedidos_base_nuevos');
+  if (rawBase) {
+    try {
+      const data = JSON.parse(rawBase);
+      nuevosLibreria = data.libreria || [];
+      nuevosLimpieza = data.limpieza || [];
+    } catch(e) { console.warn('Error cargando base nuevos', e); }
+  }
+  reconstruirBases();
+
   document.getElementById('cfgFecha').value = fechaISOaInput(estado.fecha);
   document.getElementById('cfgSector').value = estado.sector || '';
   document.getElementById('cfgSolicitante').value = estado.solicitante || '';
@@ -294,6 +320,12 @@ function cargar() {
     help.textContent = formatearFechaLarga(estado.fecha);
     help.className = 'help ok';
   }
+}
+
+// NUEVO: reconstruye las bases combinando originales + nuevos
+function reconstruirBases() {
+  baseLibreria = [...BASE_LIBRERIA_ORIGINAL, ...nuevosLibreria];
+  baseLimpieza = [...BASE_LIMPIEZA_ORIGINAL, ...nuevosLimpieza];
 }
 
 // ============================================================
@@ -457,27 +489,116 @@ function renderPedido() {
 }
 
 // ============================================================
-// LISTADO BASE
+// LISTADO BASE (CON INDICADOR DE ORIGEN Y BOTÓN ELIMINAR)
 // ============================================================
 function renderListadoBase(categoria) {
   const tbody = document.getElementById(categoria === 'libreria' ? 'tbodyLibreria' : 'tbodyLimpieza');
-  const base = categoria === 'libreria' ? BASE_LIBRERIA : BASE_LIMPIEZA;
+  const contador = document.getElementById(categoria === 'libreria' ? 'contadorLibreria' : 'contadorLimpieza');
+  const base = categoria === 'libreria' ? baseLibreria : baseLimpieza;
+  const nuevos = categoria === 'libreria' ? nuevosLibreria : nuevosLimpieza;
+
+  contador.textContent = `${base.length} artículo${base.length === 1 ? '' : 's'}`;
+
   tbody.innerHTML = base.map(art => {
     const yaEsta = estado.items.find(i => i.categoria === categoria && i.articulo === art);
+    const esNuevo = nuevos.includes(art);
     return `
       <tr>
         <td>${escapeHtml(art)}</td>
         <td style="text-align:center">
-          ${yaEsta
-            ? `<span class="chip">✓ ${yaEsta.cantidad}</span>`
-            : `<button onclick="agregarItem('${categoria}', ${escapeAttr(JSON.stringify(art))}, 1)">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="icon"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                Agregar
-              </button>`}
+          ${esNuevo
+            ? '<span class="chip chip-nuevo">Agregado</span>'
+            : '<span class="chip">Base</span>'}
+        </td>
+        <td style="text-align:center">
+          <div style="display:inline-flex;gap:6px;">
+            ${yaEsta
+              ? `<span class="chip">✓ ${yaEsta.cantidad}</span>`
+              : `<button onclick="agregarItem('${categoria}', ${escapeAttr(JSON.stringify(art))}, 1)">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="icon"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  Agregar
+                </button>`}
+            ${esNuevo
+              ? `<button class="danger icon-only" onclick="eliminarArticuloNuevo('${categoria}', ${escapeAttr(JSON.stringify(art))})" title="Eliminar de la base">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                </button>`
+              : ''}
+          </div>
         </td>
       </tr>
     `;
   }).join('');
+}
+
+// ============================================================
+// NUEVO: MODAL NUEVO ARTÍCULO
+// ============================================================
+function abrirModalNuevo(categoria) {
+  categoriaNuevo = categoria || 'libreria';
+  actualizarBotonesCategoriaNuevo();
+  document.getElementById('inputNuevoArticulo').value = '';
+  document.getElementById('msgNuevoError').classList.add('hidden');
+  document.getElementById('modalNuevoTitulo').textContent =
+    `Nuevo artículo — ${categoriaNuevo === 'libreria' ? 'Librería' : 'Limpieza'}`;
+  const modal = document.getElementById('modalNuevo');
+  modal.classList.remove('hidden');
+  modal.onclick = (e) => { if (e.target === modal) cerrarModalNuevo(); };
+  setTimeout(() => document.getElementById('inputNuevoArticulo').focus(), 100);
+}
+function cerrarModalNuevo() {
+  document.getElementById('modalNuevo').classList.add('hidden');
+}
+function seleccionarCategoriaNuevo(cat) {
+  categoriaNuevo = cat;
+  actualizarBotonesCategoriaNuevo();
+  document.getElementById('modalNuevoTitulo').textContent =
+    `Nuevo artículo — ${cat === 'libreria' ? 'Librería' : 'Limpieza'}`;
+}
+function actualizarBotonesCategoriaNuevo() {
+  document.querySelectorAll('#modalNuevo .rol-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.cat === categoriaNuevo);
+  });
+}
+function guardarNuevoArticulo() {
+  const input = document.getElementById('inputNuevoArticulo');
+  const msg = document.getElementById('msgNuevoError');
+  const nombre = input.value.trim().replace(/\s+/g, ' ');
+  if (!nombre) {
+    msg.textContent = 'Escribí un nombre para el artículo.';
+    msg.classList.remove('hidden');
+    return;
+  }
+  const base = categoriaNuevo === 'libreria' ? baseLibreria : baseLimpieza;
+  const normalizado = normalizarTexto(nombre);
+  const existe = base.some(a => normalizarTexto(a) === normalizado);
+  if (existe) {
+    msg.textContent = 'Ese artículo ya existe en la lista.';
+    msg.classList.remove('hidden');
+    return;
+  }
+  // Agregar a la lista de nuevos y a la base
+  if (categoriaNuevo === 'libreria') {
+    nuevosLibreria.push(nombre);
+    baseLibreria.push(nombre);
+  } else {
+    nuevosLimpieza.push(nombre);
+    baseLimpieza.push(nombre);
+  }
+  guardarBase();
+  renderListadoBase(categoriaNuevo);
+  cerrarModalNuevo();
+}
+function eliminarArticuloNuevo(categoria, articulo) {
+  if (!confirm(`¿Eliminar "${articulo}" de la lista de artículos?\n\nNo afecta los ítems ya cargados en el pedido.`)) return;
+  if (categoria === 'libreria') {
+    nuevosLibreria = nuevosLibreria.filter(a => a !== articulo);
+    baseLibreria = baseLibreria.filter(a => a !== articulo);
+  } else {
+    nuevosLimpieza = nuevosLimpieza.filter(a => a !== articulo);
+    baseLimpieza = baseLimpieza.filter(a => a !== articulo);
+  }
+  guardarBase();
+  renderListadoBase(categoria);
 }
 
 // ============================================================
@@ -486,7 +607,7 @@ function renderListadoBase(categoria) {
 function actualizarSugerencias(categoria) {
   const input = document.getElementById(categoria === 'libreria' ? 'inputBuscLibreria' : 'inputBuscLimpieza');
   const box = document.getElementById(categoria === 'libreria' ? 'sugerenciasLibreria' : 'sugerenciasLimpieza');
-  const base = categoria === 'libreria' ? BASE_LIBRERIA : BASE_LIMPIEZA;
+  const base = categoria === 'libreria' ? baseLibreria : baseLimpieza;
   const valor = normalizarTexto(input.value);
   const yaEnPedido = new Set(estado.items.filter(i => i.categoria === categoria).map(i => i.articulo));
   let sugerencias = base.filter(a => !yaEnPedido.has(a));
@@ -763,7 +884,7 @@ function cargarBase() {
 }
 
 function vaciarTodo() {
-  if (!confirm('¿Estás seguro? Se van a borrar TODOS los ítems del pedido y la configuración.\n\nEsta acción NO se puede deshacer.')) return;
+  if (!confirm('¿Estás seguro? Se van a borrar TODOS los ítems del pedido y la configuración.\n\nEsta acción NO se puede deshacer.\n\n(Los artículos nuevos agregados a la base NO se borran.)')) return;
   estado = { fecha: '', sector: '', solicitante: '', items: [] };
   localStorage.removeItem('pedidos_estado');
   document.getElementById('cfgFecha').value = '';
@@ -779,7 +900,10 @@ function vaciarTodo() {
 }
 
 function exportarJSON() {
-  const data = JSON.stringify(estado, null, 2);
+  const data = JSON.stringify({
+    ...estado,
+    _baseNuevos: { libreria: nuevosLibreria, limpieza: nuevosLimpieza }
+  }, null, 2);
   const blob = new Blob([data], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -794,7 +918,15 @@ function importarJSON(event) {
     try {
       const data = JSON.parse(e.target.result);
       if (!data.items) throw new Error('Formato inválido');
+      const baseNuevos = data._baseNuevos;
+      delete data._baseNuevos;
       estado = data;
+      if (baseNuevos) {
+        nuevosLibreria = baseNuevos.libreria || [];
+        nuevosLimpieza = baseNuevos.limpieza || [];
+        guardarBase();
+        reconstruirBases();
+      }
       guardar();
       document.getElementById('cfgFecha').value = fechaISOaInput(estado.fecha);
       document.getElementById('cfgSector').value = estado.sector || '';
@@ -824,4 +956,10 @@ window.addEventListener('DOMContentLoaded', () => {
   renderListadoBase('libreria');
   renderListadoBase('limpieza');
   renderResumen();
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const modalN = document.getElementById('modalNuevo');
+      if (!modalN.classList.contains('hidden')) cerrarModalNuevo();
+    }
+  });
 });

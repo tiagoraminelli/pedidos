@@ -109,6 +109,16 @@
   <!-- TAB LIBRERIA -->
   <div id="tabLibreria" class="hidden">
     <div class="panel">
+      <div class="panel-head">
+        <div class="panel-head-left">
+          <h2>Artículos de Librería</h2>
+          <span id="contadorLibreria" class="indicador-orden">0 artículos</span>
+        </div>
+        <button class="primary" onclick="abrirModalNuevo('libreria')">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="icon"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nuevo artículo
+        </button>
+      </div>
       <div class="buscador-wrap">
         <div class="input-wrap">
           <input type="text" id="inputBuscLibreria" placeholder="Buscar artículo de librería para agregar..." autocomplete="off"
@@ -121,7 +131,8 @@
           <thead>
             <tr>
               <th>Artículo</th>
-              <th style="width:140px;text-align:center">Acción</th>
+              <th style="width:100px;text-align:center">Origen</th>
+              <th style="width:200px;text-align:center">Acción</th>
             </tr>
           </thead>
           <tbody id="tbodyLibreria"></tbody>
@@ -133,6 +144,16 @@
   <!-- TAB LIMPIEZA -->
   <div id="tabLimpieza" class="hidden">
     <div class="panel">
+      <div class="panel-head">
+        <div class="panel-head-left">
+          <h2>Artículos de Limpieza</h2>
+          <span id="contadorLimpieza" class="indicador-orden">0 artículos</span>
+        </div>
+        <button class="primary" onclick="abrirModalNuevo('limpieza')">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="icon"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nuevo artículo
+        </button>
+      </div>
       <div class="buscador-wrap">
         <div class="input-wrap">
           <input type="text" id="inputBuscLimpieza" placeholder="Buscar artículo de limpieza para agregar..." autocomplete="off"
@@ -145,7 +166,8 @@
           <thead>
             <tr>
               <th>Artículo</th>
-              <th style="width:140px;text-align:center">Acción</th>
+              <th style="width:100px;text-align:center">Origen</th>
+              <th style="width:200px;text-align:center">Acción</th>
             </tr>
           </thead>
           <tbody id="tbodyLimpieza"></tbody>
@@ -176,6 +198,36 @@
     <div id="contenedorResumen"></div>
   </div>
 
+</div>
+
+<!-- MODAL NUEVO ARTÍCULO -->
+<div id="modalNuevo" class="modal hidden">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h3 id="modalNuevoTitulo">Nuevo artículo</h3>
+      <button class="modal-close" onclick="cerrarModalNuevo()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#6b7280;margin-bottom:6px;">Categoría</label>
+      <div class="roles-group">
+        <button type="button" class="rol-btn active" data-cat="libreria" onclick="seleccionarCategoriaNuevo('libreria')">Librería</button>
+        <button type="button" class="rol-btn" data-cat="limpieza" onclick="seleccionarCategoriaNuevo('limpieza')">Limpieza</button>
+      </div>
+
+      <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#6b7280;margin-top:16px;margin-bottom:6px;">Nombre del artículo</label>
+      <input type="text" id="inputNuevoArticulo" placeholder="Ej: Resma A5 x 500 hojas"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();guardarNuevoArticulo();}"
+             style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;font-family:inherit;">
+
+      <p style="font-size:11px;color:#9ca3af;margin-top:8px;">Se va a agregar a la lista de artículos disponibles. Después podés usarlo desde el buscador.</p>
+
+      <div id="msgNuevoError" class="msg-error hidden"></div>
+    </div>
+    <div class="modal-foot">
+      <button onclick="cerrarModalNuevo()">Cancelar</button>
+      <button class="primary" onclick="guardarNuevoArticulo()">Guardar</button>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
