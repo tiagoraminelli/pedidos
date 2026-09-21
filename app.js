@@ -1,5 +1,5 @@
 // ============================================================
-// BASE DE ARTÍCULOS
+// BASES DE ARTÍCULOS
 // ============================================================
 const BASE_LIBRERIA_ORIGINAL = [
   "Abrochadora pinza p/broche (GRAP 21/6)",
@@ -271,19 +271,25 @@ const CANT_INICIAL_LIMPIEZA = {
 };
 
 // ============================================================
-// NUEVO: BASE DINÁMICA (incluye artículos originales + agregados por el usuario)
+// ESTADO
 // ============================================================
 let baseLibreria = [...BASE_LIBRERIA_ORIGINAL];
 let baseLimpieza = [...BASE_LIMPIEZA_ORIGINAL];
-let nuevosLibreria = [];   // artículos agregados por el usuario
-let nuevosLimpieza = [];   // artículos agregados por el usuario
+let nuevosLibreria = [];
+let nuevosLimpieza = [];
 
-// ============================================================
-// ESTADO
-// ============================================================
-let estado = { fecha: '', sector: '', solicitante: '', items: [] };
+let estado = {
+  fecha: '',
+  sector: '',
+  solicitante: '',
+  destinatario: '',
+  cargo: '',
+  institucion: '',
+  items: []
+};
 let sugerenciaActiva = { libreria: -1, limpieza: -1 };
 let categoriaNuevo = 'libreria';
+let itemsImportados = null;
 const nombresMeses = ['', 'Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
 // ============================================================
@@ -301,7 +307,6 @@ function cargar() {
   if (raw) {
     try { estado = JSON.parse(raw); } catch(e) { console.warn('Error cargando estado', e); }
   }
-  // NUEVO: cargar artículos nuevos agregados por el usuario
   const rawBase = localStorage.getItem('pedidos_base_nuevos');
   if (rawBase) {
     try {
@@ -311,18 +316,18 @@ function cargar() {
     } catch(e) { console.warn('Error cargando base nuevos', e); }
   }
   reconstruirBases();
-
   document.getElementById('cfgFecha').value = fechaISOaInput(estado.fecha);
-  document.getElementById('cfgSector').value = estado.sector || '';
+  document.getElementById('cfgDestinatario').value = estado.destinatario || '';
+  document.getElementById('cfgCargo').value = estado.cargo || '';
+  document.getElementById('cfgInstitucion').value = estado.institucion || '';
   document.getElementById('cfgSolicitante').value = estado.solicitante || '';
+  document.getElementById('cfgSector').value = estado.sector || '';
   if (estado.fecha) {
     const help = document.getElementById('fechaHelp');
     help.textContent = formatearFechaLarga(estado.fecha);
     help.className = 'help ok';
   }
 }
-
-// NUEVO: reconstruye las bases combinando originales + nuevos
 function reconstruirBases() {
   baseLibreria = [...BASE_LIBRERIA_ORIGINAL, ...nuevosLibreria];
   baseLimpieza = [...BASE_LIMPIEZA_ORIGINAL, ...nuevosLimpieza];
@@ -370,6 +375,12 @@ function formatearFechaLarga(iso) {
   const fecha = new Date(parseInt(y), parseInt(m)-1, parseInt(d));
   return `${dias[fecha.getDay()]} ${parseInt(d)} de ${nombresMeses[parseInt(m)].toLowerCase()} de ${y}`;
 }
+function formatearFechaLargaSimple(iso) {
+  if (!iso) return '';
+  const [y, m, d] = iso.split('-');
+  if (!y || !m || !d) return '';
+  return `${parseInt(d)} de ${nombresMeses[parseInt(m)].toLowerCase()} de ${y}`;
+}
 function formatearFecha(f) {
   if (!f) return '—';
   const [y, m, d] = f.split('-');
@@ -409,8 +420,11 @@ function onFechaKeydown(event) {
 // CONFIG
 // ============================================================
 function actualizarConfig() {
-  estado.sector = document.getElementById('cfgSector').value.trim().toUpperCase();
+  estado.sector = document.getElementById('cfgSector').value.trim();
   estado.solicitante = document.getElementById('cfgSolicitante').value.trim().toUpperCase();
+  estado.destinatario = document.getElementById('cfgDestinatario').value.trim();
+  estado.cargo = document.getElementById('cfgCargo').value.trim();
+  estado.institucion = document.getElementById('cfgInstitucion').value.trim();
   guardar();
 }
 
@@ -489,7 +503,7 @@ function renderPedido() {
 }
 
 // ============================================================
-// LISTADO BASE (CON INDICADOR DE ORIGEN Y BOTÓN ELIMINAR)
+// LISTADO BASE
 // ============================================================
 function renderListadoBase(categoria) {
   const tbody = document.getElementById(categoria === 'libreria' ? 'tbodyLibreria' : 'tbodyLimpieza');
@@ -531,7 +545,7 @@ function renderListadoBase(categoria) {
 }
 
 // ============================================================
-// NUEVO: MODAL NUEVO ARTÍCULO
+// MODAL NUEVO ARTÍCULO
 // ============================================================
 function abrirModalNuevo(categoria) {
   categoriaNuevo = categoria || 'libreria';
@@ -576,7 +590,6 @@ function guardarNuevoArticulo() {
     msg.classList.remove('hidden');
     return;
   }
-  // Agregar a la lista de nuevos y a la base
   if (categoriaNuevo === 'libreria') {
     nuevosLibreria.push(nombre);
     baseLibreria.push(nombre);
@@ -662,49 +675,58 @@ function manejarTeclasInput(event, categoria) {
 // ============================================================
 function hojaHTML(items, titulo) {
   const fechaStr = estado.fecha ? formatearFecha(estado.fecha) : '—';
-  const fechaLarga = estado.fecha ? formatearFechaLarga(estado.fecha) : '';
-  const sectorStr = estado.sector || '—';
-  const solicitanteStr = estado.solicitante || '—';
+  const fechaCorta = estado.fecha ? formatearFechaLargaSimple(estado.fecha) : '—';
+  const solicitanteStr = estado.solicitante || '___________________';
+  const cargoSolicitante = estado.sector || 'Miembro del Consejo Asesor';
+  const destinatarioStr = estado.destinatario || '___________________';
+  const cargoDestinatario = estado.cargo || 'Administrador/a General';
+  const institucionStr = estado.institucion || 'Hospital San Cristóbal';
+  const tipoProducto = titulo === 'Librería' ? 'productos de librería' : 'productos de limpieza';
+  const articuloDet = titulo === 'Librería' ? 'los' : 'los';
+
   return `
     <div class="pedido-doc">
       <div class="doc-head">
         <div>
           <h3>PEDIDO DE INSUMOS — ${titulo.toUpperCase()}</h3>
           <div class="sub"><strong>Hospital Julio César Villanueva</strong> — San Cristóbal</div>
-          <div class="sub">${items.length} ítem${items.length === 1 ? '' : 's'}</div>
         </div>
         <img src="santa fe.webp" alt="Escudo de Santa Fe" class="doc-head-logo">
       </div>
-      <div class="doc-meta">
-        <div><strong>Fecha:</strong> ${fechaStr}${fechaLarga ? ` <span class="muted">(${fechaLarga})</span>` : ''}</div>
-        <div><strong>Sector solicitante:</strong> ${escapeHtml(sectorStr)}</div>
-        <div><strong>Solicitante:</strong> ${escapeHtml(solicitanteStr)}</div>
-        <div><strong>Categoría:</strong> ${titulo}</div>
+
+      <!-- LEYENDA FORMAL -->
+      <div class="leyenda">
+        <p class="leyenda-lugar">San Cristóbal, ${fechaCorta}.-</p>
+        <p>A la ${cargoDestinatario}</p>
+        <p><strong>${escapeHtml(destinatarioStr)}</strong></p>
+        <p><strong>${escapeHtml(institucionStr)}</strong></p>
+        <p style="margin-top:14px;">Quien suscribe, <strong>${escapeHtml(solicitanteStr)}</strong>, ${escapeHtml(cargoSolicitante)} del Hospital de San Cristóbal, se dirige a Ud. a fin de solicitar que autorice la compra/licitación de ${tipoProducto} que se detallan en la planilla.</p>
+        <p class="leyenda-cierre">Esperando contar con una respuesta favorable, saluda Atte. -</p>
       </div>
+
+      <!-- TABLA -->
       <table class="doc-table">
         <thead>
           <tr>
             <th style="width:44px;text-align:center">Nº</th>
-            <th>Artículo</th>
-            <th style="width:80px;text-align:center">Cant.</th>
-            <th style="width:200px">Observación</th>
+            <th>ARTÍCULOS Y CARACTERÍSTICAS</th>
+            <th style="width:80px;text-align:center">CANTIDAD</th>
           </tr>
         </thead>
         <tbody>
           ${items.map((item, i) => `
             <tr>
               <td class="num">${i+1}</td>
-              <td>${escapeHtml(item.articulo)}</td>
+              <td>${escapeHtml(item.articulo)}${item.observacion ? ` <span class="muted">(${escapeHtml(item.observacion)})</span>` : ''}</td>
               <td class="num">${item.cantidad}</td>
-              <td>${escapeHtml(item.observacion || '')}</td>
             </tr>
           `).join('')}
         </tbody>
       </table>
+
       <div class="firma">
         <div>Firma Solicitante</div>
         <div>Firma Autorizante</div>
-        <div>Firma Receptor</div>
       </div>
     </div>
   `;
@@ -715,7 +737,7 @@ function renderResumen() {
   const lib = estado.items.filter(i => i.categoria === 'libreria');
   const limp = estado.items.filter(i => i.categoria === 'limpieza');
   if (estado.items.length === 0) {
-    cont.innerHTML = '<div style="text-align:center;padding:48px 24px;color:#9ca3af;font-size:13px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;">No hay ítems para mostrar. Agregá artículos al pedido.</div>';
+    cont.innerHTML = '<div class="empty">No hay ítems para mostrar. Agregá artículos al pedido.</div>';
     return;
   }
   cont.innerHTML = (lib.length ? hojaHTML(lib, 'Librería') : '') + (limp.length ? hojaHTML(limp, 'Limpieza') : '');
@@ -729,7 +751,6 @@ function imprimirTodo() {
   setTimeout(() => window.print(), 100);
 }
 function imprimirPedido() { imprimirTodo(); }
-function imprimirResumen() { window.print(); }
 
 function imprimirSeccion(categoria) {
   const items = estado.items.filter(i => i.categoria === categoria);
@@ -748,24 +769,42 @@ function imprimirSeccion(categoria) {
 // ============================================================
 // IMPORTAR EXCEL
 // ============================================================
-function importarExcel(event) {
+function abrirImportExcel() {
+  document.getElementById('paso1Excel').classList.remove('hidden');
+  document.getElementById('paso2Preview').classList.add('hidden');
+  document.getElementById('btnConfirmarImport').classList.add('hidden');
+  document.getElementById('inputExcel').value = '';
+  document.getElementById('mensajeExcel').innerHTML = '';
+  itemsImportados = null;
+  const modal = document.getElementById('modalImportExcel');
+  modal.classList.remove('hidden');
+  modal.onclick = (e) => { if (e.target === modal) cerrarModalImport(); };
+}
+function cerrarModalImport() {
+  document.getElementById('modalImportExcel').classList.add('hidden');
+}
+function leerExcel(event) {
   const file = event.target.files[0];
   if (!file) return;
+  const msg = document.getElementById('mensajeExcel');
+  msg.innerHTML = '<div style="font-size:13px;color:#6b7280;">Leyendo archivo...</div>';
   const reader = new FileReader();
   reader.onload = (e) => {
     try {
       const data = new Uint8Array(e.target.result);
       const workbook = XLSX.read(data, { type: 'array' });
-      procesarExcelPedidos(workbook);
+      procesarWorkbook(workbook);
     } catch (err) {
-      alert('Error al leer el archivo: ' + err.message);
+      msg.innerHTML = `<div style="background:#fef2f2;border:1px solid #fca5a5;color:#b91c1c;border-radius:6px;padding:10px;font-size:13px;">Error al leer el archivo: ${err.message}</div>`;
     }
   };
   reader.readAsArrayBuffer(file);
-  event.target.value = '';
 }
-
-function procesarExcelPedidos(workbook) {
+function normalizarTexto(s) {
+  return String(s || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+}
+function procesarWorkbook(workbook) {
+  const msg = document.getElementById('mensajeExcel');
   let hojaLibreria = null, hojaLimpieza = null;
   workbook.SheetNames.forEach(nombre => {
     const n = normalizarTexto(nombre);
@@ -774,86 +813,80 @@ function procesarExcelPedidos(workbook) {
   });
 
   if (!hojaLibreria && !hojaLimpieza) {
-    alert('No se encontraron hojas de "Librería" ni "Limpieza".\n\nHojas disponibles:\n' + workbook.SheetNames.join('\n'));
+    msg.innerHTML = `<div style="background:#fffbeb;border:1px solid #fcd34d;color:#92400e;border-radius:6px;padding:10px;font-size:13px;">No se encontraron hojas de <strong>Librería</strong> ni <strong>Limpieza</strong>. Hojas revisadas: <em>${workbook.SheetNames.join(', ')}</em></div>`;
     return;
   }
 
-  const itemsNuevos = [];
+  const items = [];
+  if (hojaLibreria) items.push(...leerHojaPedido(workbook.Sheets[hojaLibreria], 'libreria'));
+  if (hojaLimpieza) items.push(...leerHojaPedido(workbook.Sheets[hojaLimpieza], 'limpieza'));
 
-  if (hojaLibreria) {
-    const items = leerHojaPedido(workbook.Sheets[hojaLibreria], 'libreria');
-    itemsNuevos.push(...items);
-  }
-  if (hojaLimpieza) {
-    const items = leerHojaPedido(workbook.Sheets[hojaLimpieza], 'limpieza');
-    itemsNuevos.push(...items);
-  }
-
-  if (itemsNuevos.length === 0) {
-    alert('No se encontraron artículos con cantidad cargada en el Excel.');
+  if (items.length === 0) {
+    msg.innerHTML = `<div style="background:#fffbeb;border:1px solid #fcd34d;color:#92400e;border-radius:6px;padding:10px;font-size:13px;">No se encontraron artículos con cantidad mayor a cero.</div>`;
     return;
   }
 
-  const resumen = `Se detectaron ${itemsNuevos.length} ítems:\n` +
-    `• Librería: ${itemsNuevos.filter(i => i.categoria === 'libreria').length}\n` +
-    `• Limpieza: ${itemsNuevos.filter(i => i.categoria === 'limpieza').length}\n\n` +
-    `¿Reemplazar el pedido actual?`;
+  itemsImportados = items;
+  const cantLib = items.filter(i => i.categoria === 'libreria').length;
+  const cantLimp = items.filter(i => i.categoria === 'limpieza').length;
+  document.getElementById('cantItems').textContent = items.length;
+  document.getElementById('cantLib').textContent = cantLib;
+  document.getElementById('cantLimp').textContent = cantLimp;
 
-  if (estado.items.length > 0 && !confirm(resumen)) return;
+  const tbody = document.getElementById('tbodyPreview');
+  tbody.innerHTML = items.map(it => `
+    <tr>
+      <td><span class="chip">${it.categoria === 'libreria' ? 'Librería' : 'Limpieza'}</span></td>
+      <td>${escapeHtml(it.articulo)}</td>
+      <td style="text-align:center;font-weight:600">${it.cantidad}</td>
+    </tr>
+  `).join('');
 
-  estado.items = itemsNuevos;
-  guardar();
-  renderPedido();
-  renderListadoBase('libreria');
-  renderListadoBase('limpieza');
-  renderResumen();
-  alert(`✅ Importados ${itemsNuevos.length} ítems desde el Excel.`);
+  document.getElementById('paso1Excel').classList.add('hidden');
+  document.getElementById('paso2Preview').classList.remove('hidden');
+  document.getElementById('btnConfirmarImport').classList.remove('hidden');
 }
-
 function leerHojaPedido(sheet, categoria) {
   const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: null });
   const items = [];
   if (!rows || rows.length === 0) return items;
-
   let headerIdx = -1;
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
     if (!r) continue;
     const joined = r.map(c => normalizarTexto(c)).join('|');
-    if (joined.includes('ARTICULO') && joined.includes('CANTIDAD')) {
-      headerIdx = i;
-      break;
-    }
+    if (joined.includes('ARTICULO') && joined.includes('CANTIDAD')) { headerIdx = i; break; }
   }
   if (headerIdx === -1) return items;
-
   for (let i = headerIdx + 1; i < rows.length; i++) {
     const r = rows[i];
     if (!r) continue;
-    const articulo = limpiarCelda(r[0]);
+    const articulo = limpiar(r[0]);
     const cantidad = toInt(r[1]);
-
     if (!articulo) continue;
     const artNorm = normalizarTexto(articulo);
     if (artNorm === 'LIBRERIA' || artNorm === 'LIMPIEZA') continue;
     if (artNorm.includes('TOTAL') || artNorm.includes('SON PESOS')) break;
-
-    if (cantidad > 0) {
-      items.push({
-        categoria,
-        articulo,
-        cantidad,
-        observacion: ''
-      });
-    }
+    if (cantidad > 0) items.push({ categoria, articulo, cantidad, observacion: '' });
   }
   return items;
 }
-
-function limpiarCelda(v) {
-  if (v === null || v === undefined) return '';
-  return String(v).trim();
+function confirmarImportExcel() {
+  if (!itemsImportados) return;
+  estado.items = itemsImportados;
+  guardar();
+  renderPedido();
+  renderListadoBase('libreria');
+  renderListadoBase('limpieza');
+  renderResumen();
+  cerrarModalImport();
+  alert(`✅ Importados ${itemsImportados.length} ítems desde el Excel.`);
 }
+
+// ============================================================
+// NORMALIZADORES
+// ============================================================
+function limpiar(v) { return (v === null || v === undefined) ? '' : String(v).trim(); }
 function toInt(v) {
   if (v === null || v === undefined || v === '') return 0;
   if (typeof v === 'number') return Math.floor(v);
@@ -864,7 +897,6 @@ function toInt(v) {
 // ============================================================
 // UTILIDADES
 // ============================================================
-function normalizarTexto(s) { return String(s || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim(); }
 function escapeHtml(s) { if (s === undefined || s === null) return ''; return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function escapeAttr(s) { return escapeHtml(s).replace(/`/g, '&#96;'); }
 
@@ -885,11 +917,18 @@ function cargarBase() {
 
 function vaciarTodo() {
   if (!confirm('¿Estás seguro? Se van a borrar TODOS los ítems del pedido y la configuración.\n\nEsta acción NO se puede deshacer.\n\n(Los artículos nuevos agregados a la base NO se borran.)')) return;
-  estado = { fecha: '', sector: '', solicitante: '', items: [] };
+  estado = {
+    fecha: '', sector: '', solicitante: '',
+    destinatario: '', cargo: '', institucion: '',
+    items: []
+  };
   localStorage.removeItem('pedidos_estado');
   document.getElementById('cfgFecha').value = '';
-  document.getElementById('cfgSector').value = '';
+  document.getElementById('cfgDestinatario').value = '';
+  document.getElementById('cfgCargo').value = '';
+  document.getElementById('cfgInstitucion').value = '';
   document.getElementById('cfgSolicitante').value = '';
+  document.getElementById('cfgSector').value = '';
   document.getElementById('fechaHelp').textContent = 'DD/MM o DD/MM/AAAA';
   document.getElementById('fechaHelp').className = 'help';
   renderPedido();
@@ -929,8 +968,11 @@ function importarJSON(event) {
       }
       guardar();
       document.getElementById('cfgFecha').value = fechaISOaInput(estado.fecha);
-      document.getElementById('cfgSector').value = estado.sector || '';
+      document.getElementById('cfgDestinatario').value = estado.destinatario || '';
+      document.getElementById('cfgCargo').value = estado.cargo || '';
+      document.getElementById('cfgInstitucion').value = estado.institucion || '';
       document.getElementById('cfgSolicitante').value = estado.solicitante || '';
+      document.getElementById('cfgSector').value = estado.sector || '';
       if (estado.fecha) {
         const help = document.getElementById('fechaHelp');
         help.textContent = formatearFechaLarga(estado.fecha);
@@ -959,7 +1001,9 @@ window.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       const modalN = document.getElementById('modalNuevo');
+      const modalI = document.getElementById('modalImportExcel');
       if (!modalN.classList.contains('hidden')) cerrarModalNuevo();
+      else if (!modalI.classList.contains('hidden')) cerrarModalImport();
     }
   });
 });

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sistema de Pedidos - Hospital Julio César Villanueva</title>
-<link rel="icon" type="image/webp" href="santa fe.webp">
+<link rel="icon" href="santa fe.webp">
 <link rel="stylesheet" href="estilos.css">
 </head>
 <body>
@@ -20,13 +20,12 @@
       </div>
     </div>
     <div class="actions">
-      <button onclick="document.getElementById('inputExcel').click()">
+      <button onclick="abrirImportExcel()">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         Importar Excel
       </button>
-      <input type="file" id="inputExcel" accept=".xlsx,.xls" class="hidden" onchange="importarExcel(event)">
       <button onclick="exportarJSON()">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
         Exportar
       </button>
       <button onclick="document.getElementById('inputImport').click()">
@@ -57,12 +56,24 @@
       <div id="fechaHelp" class="help">DD/MM o DD/MM/AAAA</div>
     </div>
     <div class="field">
-      <label>Sector solicitante</label>
-      <input type="text" id="cfgSector" placeholder="Ej: Administración" oninput="actualizarConfig()" style="text-transform:uppercase">
+      <label>Destinatario</label>
+      <input type="text" id="cfgDestinatario" placeholder="Ej: Lic. Romina Berrettoni" oninput="actualizarConfig()">
+    </div>
+    <div class="field">
+      <label>Cargo</label>
+      <input type="text" id="cfgCargo" placeholder="Ej: Administradora General" oninput="actualizarConfig()">
+    </div>
+    <div class="field">
+      <label>Institución destino</label>
+      <input type="text" id="cfgInstitucion" placeholder="Ej: Hospital San Cristóbal" oninput="actualizarConfig()">
     </div>
     <div class="field">
       <label>Solicitante</label>
       <input type="text" id="cfgSolicitante" placeholder="Nombre y apellido" oninput="actualizarConfig()" style="text-transform:uppercase">
+    </div>
+    <div class="field">
+      <label>Cargo del solicitante</label>
+      <input type="text" id="cfgSector" placeholder="Ej: Miembro del Consejo Asesor" oninput="actualizarConfig()">
     </div>
   </div>
 
@@ -133,7 +144,7 @@
             <tr>
               <th>Artículo</th>
               <th style="width:100px;text-align:center">Origen</th>
-              <th style="width:200px;text-align:center">Acción</th>
+              <th style="width:220px;text-align:center">Acción</th>
             </tr>
           </thead>
           <tbody id="tbodyLibreria"></tbody>
@@ -168,7 +179,7 @@
             <tr>
               <th>Artículo</th>
               <th style="width:100px;text-align:center">Origen</th>
-              <th style="width:200px;text-align:center">Acción</th>
+              <th style="width:220px;text-align:center">Acción</th>
             </tr>
           </thead>
           <tbody id="tbodyLimpieza"></tbody>
@@ -196,7 +207,7 @@
         </button>
       </div>
     </div>
-    <div id="contenedorResumen"></div>
+    <div id="contenedorResumen" style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:24px;"></div>
   </div>
 
 </div>
@@ -209,16 +220,22 @@
       <button class="modal-close" onclick="cerrarModalNuevo()">&times;</button>
     </div>
     <div class="modal-body">
-      <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#6b7280;margin-bottom:6px;">Categoría</label>
+      <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#6b7280;margin-bottom:8px;">Categoría</label>
       <div class="roles-group">
-        <button type="button" class="rol-btn active" data-cat="libreria" onclick="seleccionarCategoriaNuevo('libreria')">Librería</button>
-        <button type="button" class="rol-btn" data-cat="limpieza" onclick="seleccionarCategoriaNuevo('limpieza')">Limpieza</button>
+        <button type="button" class="rol-btn active" data-cat="libreria" onclick="seleccionarCategoriaNuevo('libreria')">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          Librería
+        </button>
+        <button type="button" class="rol-btn" data-cat="limpieza" onclick="seleccionarCategoriaNuevo('limpieza')">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px"><path d="M9 2v6M15 2v6M6 8h12l-1 12H7L6 8z"/></svg>
+          Limpieza
+        </button>
       </div>
 
       <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#6b7280;margin-top:16px;margin-bottom:6px;">Nombre del artículo</label>
       <input type="text" id="inputNuevoArticulo" placeholder="Ej: Resma A5 x 500 hojas"
              onkeydown="if(event.key==='Enter'){event.preventDefault();guardarNuevoArticulo();}"
-             style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;font-family:inherit;">
+             style="width:100%;padding:7px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;font-family:inherit;">
 
       <p style="font-size:11px;color:#9ca3af;margin-top:8px;">Se va a agregar a la lista de artículos disponibles. Después podés usarlo desde el buscador.</p>
 
@@ -230,6 +247,95 @@
     </div>
   </div>
 </div>
+
+<!-- MODAL IMPORTAR EXCEL -->
+<div id="modalImportExcel" class="modal hidden">
+  <div class="modal-content modal-lg" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h3>Importar Excel de Pedidos</h3>
+      <button class="modal-close" onclick="cerrarModalImport()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="paso1Excel">
+        <p style="font-size:13px;color:#6b7280;margin:0 0 12px 0;">Seleccioná el archivo <strong>.xlsx</strong>. El sistema busca automáticamente las hojas <strong>Librería</strong> y <strong>Limpieza</strong>, y toma los artículos con cantidad mayor a cero.</p>
+        <input type="file" id="inputExcel" accept=".xlsx,.xls" onchange="leerExcel(event)"
+               style="width:100%;padding:7px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
+        <div id="mensajeExcel" style="margin-top:12px;"></div>
+      </div>
+      <div id="paso2Preview" class="hidden">
+        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:12px;margin-bottom:16px;font-size:13px;color:#374151;">
+          <strong>Vista previa:</strong> se detectaron <span id="cantItems" style="font-weight:700;">0</span> ítems.
+          <br>Librería: <strong id="cantLib">0</strong> | Limpieza: <strong id="cantLimp">0</strong>
+        </div>
+        <div style="max-height:400px;overflow:auto;border:1px solid #e5e7eb;border-radius:6px;">
+          <table style="font-size:12px;">
+            <thead style="position:sticky;top:0;background:#fafafa;">
+              <tr>
+                <th style="width:100px">Categoría</th>
+                <th>Artículo</th>
+                <th style="width:90px;text-align:center">Cantidad</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyPreview"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button onclick="cerrarModalImport()">Cancelar</button>
+      <button id="btnConfirmarImport" class="primary hidden" onclick="confirmarImportExcel()">Confirmar importación</button>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER LEGAL -->
+<footer class="no-print footer-legal">
+  <div class="footer-inner">
+    <div class="footer-badge">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      Herramienta de uso interno
+    </div>
+    <h4>Aclaraciones legales y condiciones de uso</h4>
+    <div class="footer-grid">
+      <div>
+        <h5>1. Naturaleza de la herramienta</h5>
+        <p>Este sistema es una <strong>herramienta de asistencia administrativa de uso interno</strong>, desarrollada para facilitar la carga, agrupación y emisión de recibos a partir de planillas Excel provistas por el usuario. No constituye un sistema oficial de facturación ni reemplaza los circuitos administrativos, contables o legales vigentes.</p>
+      </div>
+      <div>
+        <h5>2. Responsabilidad del usuario</h5>
+        <p>El usuario es el <strong>único responsable</strong> de la veracidad, exactitud y legalidad de los datos que carga, procesa e imprime. La herramienta no valida la información ingresada, ni verifica su correspondencia con la realidad asistencial, ni controla el cumplimiento de normativas de obra social, AFIP, ministerios u organismos de contralor.</p>
+      </div>
+      <div>
+        <h5>3. Exención de responsabilidad</h5>
+        <p>El/los desarrollador/es de esta herramienta <strong>no asumen responsabilidad alguna</strong> por daños directos, indirectos, incidentales o consecuentes derivados del uso, mal uso, imposibilidad de uso, errores de carga, pérdida de datos, diferencias de importes, rechazos de facturación, observaciones de auditoría, sanciones administrativas o cualquier otro perjuicio que pudiera generarse. El uso de esta herramienta es <strong>exclusiva responsabilidad del usuario</strong>.</p>
+      </div>
+      <div>
+        <h5>4. Datos personales y confidencialidad</h5>
+        <p>Toda la información cargada se procesa <strong>localmente en el navegador del usuario</strong> y no se transmite a servidores externos ni a terceros. El usuario es responsable del resguardo, confidencialidad y tratamiento adecuado de los datos personales y sensibles de los pacientes, conforme a la <strong>Ley 25.326 de Protección de Datos Personales</strong> y demás normativa aplicable.</p>
+      </div>
+      <div>
+        <h5>5. Uso libre y no comercial</h5>
+        <p>Esta herramienta se distribuye bajo el principio de <strong>uso libre, gratuito y sin garantías</strong>. Se permite su uso, copia, modificación y redistribución total o parcial, siempre que se mantenga esta aclaración legal y se cite la fuente original. <strong>No se autoriza su venta, reventa, sublicenciamiento ni explotación comercial</strong> sin autorización expresa y por escrito del autor.</p>
+      </div>
+      <div>
+        <h5>6. Ausencia de garantías</h5>
+        <p>El software se entrega <strong>"tal cual" ("as is") y "según disponibilidad" ("as available")</strong>, sin garantía de ningún tipo, expresa o implícita, incluyendo, pero no limitado a, garantías de comerciabilidad, idoneidad para un propósito particular, exactitud, disponibilidad, ausencia de errores o no infracción. El usuario asume todos los riesgos derivados del uso.</p>
+      </div>
+      <div>
+        <h5>7. Actualizaciones y cambios</h5>
+        <p>El autor podrá modificar, actualizar, suspender o discontinuar la herramienta en cualquier momento y sin previo aviso. Las versiones futuras pueden incluir cambios funcionales, estéticos o legales sin obligación de retrocompatibilidad.</p>
+      </div>
+      <div>
+        <h5>8. Jurisdicción</h5>
+        <p>Cualquier controversia derivada del uso de esta herramienta se regirá por las <strong>leyes de la República Argentina</strong>, con jurisdicción en los tribunales ordinarios de la ciudad de <strong>San Cristóbal, Provincia de Santa Fe</strong>, renunciando el usuario a cualquier otro fuero o jurisdicción que pudiera corresponderle.</p>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p><strong>Versión:</strong> 1.0 &nbsp;·&nbsp; <strong>Última actualización:</strong> 2025 &nbsp;·&nbsp; <strong>Desarrollado para:</strong> Hospital San Cristóbal "Julio Cesar Villanueva"</p>
+      <p class="footer-fine">Al utilizar esta herramienta, el usuario declara haber leído, comprendido y aceptado en su totalidad los términos aquí expuestos.</p>
+    </div>
+  </div>
+</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="app.js"></script>
