@@ -723,11 +723,6 @@ function hojaHTML(items, titulo) {
           `).join('')}
         </tbody>
       </table>
-
-      <div class="firma">
-        <div>Firma Solicitante</div>
-        <div>Firma Autorizante</div>
-      </div>
     </div>
   `;
 }
